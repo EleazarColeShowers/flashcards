@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "610491237866",
+    "firebase_url": "https://flashcard-b7623-default-rtdb.firebaseio.com",
+    "project_id": "flashcard-b7623",
+    "storage_bucket": "flashcard-b7623.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:610491237866:android:354a6e4a723d8ad6a69e93",
+        "android_client_info": {
+          "package_name": "com.example.flashcard"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDW-S1Ti0Ob8LN3L2Af1I8cvxMgxdiQ6X4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

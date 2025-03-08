@@ -1,0 +1,47 @@
+plugins {
+    id "com.android.application"
+    id "kotlin-android"
+    id "com.google.gms.google-services" // Apply the Google Services plugin
+    id "dev.flutter.flutter-gradle-plugin" // The Flutter Gradle Plugin
+}
+
+android {
+    namespace "com.example.flashcard"
+    compileSdkVersion 34 // ✅ Fixed issue (replaced flutter.compileSdkVersion)
+    ndkVersion flutter.ndkVersion
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_1_8
+    }
+
+    defaultConfig {
+        applicationId "com.example.flashcard"
+        minSdkVersion 23
+        targetSdkVersion 34
+        versionCode 1 // ✅ Fixed issue (replaced flutter.versionCode)
+        versionName "1.0" // ✅ Fixed issue (replaced flutter.versionName)
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.debug
+        }
+    }
+}
+
+flutter {
+    source "../.."
+}
+
+dependencies {
+    implementation platform('com.google.firebase:firebase-bom:32.2.2') // Firebase BOM
+    implementation 'com.google.firebase:firebase-auth:22.3.1' // ✅ Downgraded to match Kotlin 1.8
+    implementation 'com.google.firebase:firebase-database' // Firebase Realtime Database
+}
+
+apply plugin: 'com.google.gms.google-services'
