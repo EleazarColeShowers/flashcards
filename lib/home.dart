@@ -1,191 +1,200 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_database/firebase_database.dart';
+import 'FlashcardPage.dart';
 import 'AddFlashcardPage.dart';
+import 'main.dart'; 
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  
+  final bool justLoggedIn;
+
+  const HomePage({super.key, this.justLoggedIn = false});
 
   @override
   _HomePageState createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
-  int _selectedIndex = 0;
-  late PageController _pageController;
-
-  List<Map<String, String>> _flashcards = [
-    {"question": "What is Flutter?", "answer": "Flutter is an open-source UI toolkit."},
-    {"question": "What is Dart?", "answer": "Dart is a programming language for Flutter."},
-    {"question": "Stateful vs Stateless?", "answer": "Stateful widgets have mutable state."},
-  ];
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  late DatabaseReference _database;
+  List<String> _topics = [];
+  String _username = "User"; // Default username
 
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(initialPage: 0);
+    _setDatabaseReference();
   }
 
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
+void _setDatabaseReference() {
+  final User? user = _auth.currentUser;
+  if (user != null) {
+    _database = FirebaseDatabase.instance.ref().child('users').child(user.uid);
+
+    // Fetch username first
+    _database.child("username").once().then((event) {
+      final username = event.snapshot.value as String?;
+      if (username != null) {
+        setState(() {
+          _username = username;
+        });
+
+        // Show the dialog *after* fetching the username
+        if (widget.justLoggedIn) {
+          Future.delayed(Duration(milliseconds: 500), () {
+            showDialog(
+              context: context,
+              builder: (context) {
+                return AlertDialog(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  backgroundColor: Colors.pink[50],
+                  title: Text(
+                    "Hey, $_username! 😊",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.purple),
+                  ),
+                  content: Text(
+                    "I hope you have a wonderful day! 🌸\n\n- From El",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 18, color: Colors.black87),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: Text("Thanks!", style: TextStyle(color: Colors.purple, fontSize: 16)),
+                    ),
+                  ],
+                );
+              },
+            );
+          });
+        }
+      }
+    });
+
+    // Fetch topics
+    _database.child("flashcards").onValue.listen((event) {
+      final snapshot = event.snapshot.value as Map<dynamic, dynamic>?;
+      if (snapshot != null) {
+        setState(() {
+          _topics = snapshot.keys.cast<String>().toList();
+        });
+      }
     });
   }
+}
 
-  Future<void> _addFlashcard() async {
-    final newFlashcard = await Navigator.push(
+  void _logout() async {
+    await _auth.signOut();
+    Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => AddFlashcardPage()),
+      MaterialPageRoute(builder: (context) => LoginPage()), // Replace with your login page
     );
+  }
 
-    if (newFlashcard != null) {
-      setState(() {
-        _flashcards.add({
-          "question": newFlashcard["question"],
-          "answer": newFlashcard["answer"],
-        });
-      });
-
-      Future.delayed(Duration(milliseconds: 500), () {
-        if (_pageController.hasClients) {
-          _pageController.jumpToPage(_flashcards.length - 1);
-        }
-      });
-    }
+  void _deleteTopic(String topic) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Delete Topic"),
+          content: Text("Are you sure you want to delete this topic?"),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text("Cancel"),
+            ),
+            TextButton(
+              onPressed: () {
+                _database.child("flashcards").child(topic).remove();
+                Navigator.of(context).pop();
+              },
+              child: Text("Delete", style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Column(
-        children: [
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              ClipPath(
-                clipper: CurvedBottomClipper(),
-                child: Container(
-                  height: MediaQuery.of(context).size.height * 0.35,
-                  width: double.infinity,
-                  color: const Color(0xFF4A0E5C),
-                ),
-              ),
-            ],
-          ),
-          Expanded(
-            child: PageView.builder(
-              controller: _pageController,
-              physics: const BouncingScrollPhysics(),
-              itemCount: _flashcards.length,
-              itemBuilder: (context, index) {
-                return FlashcardWidget(
-                  question: _flashcards[index]["question"]!,
-                  answer: _flashcards[index]["answer"]!,
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-      bottomNavigationBar: BottomAppBar(
-        shape: const CircularNotchedRectangle(),
-        notchMargin: 8.0,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
+      backgroundColor: Color(0xFFFFF5E1),
+      body: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
           children: [
-            IconButton(
-              icon: Icon(Icons.home,
-                  color: _selectedIndex == 0 ? const Color(0xFF4A0E5C) : Colors.grey),
-              onPressed: () => _onItemTapped(0),
+            // Logout button positioned in the top-right corner
+            Align(
+              alignment: Alignment.topRight,
+              child: IconButton(
+                icon: Icon(Icons.logout, color: Colors.red, size: 28),
+                onPressed: _logout,
+              ),
             ),
-            const SizedBox(width: 40),
-            IconButton(
-              icon: Icon(Icons.person,
-                  color: _selectedIndex == 1 ? const Color(0xFF4A0E5C) : Colors.grey),
-              onPressed: () => _onItemTapped(1),
+            Text(
+              "Hey, $_username, ready to ace your exams?",
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                fontStyle: FontStyle.italic,
+                color: Colors.pink,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 20),
+            Text(
+              "Select a Topic",
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF4A0E5C)),
+            ),
+            SizedBox(height: 20),
+            Expanded(
+              child: GridView.builder(
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
+                ),
+                itemCount: _topics.length,
+                itemBuilder: (context, index) {
+                  return GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => FlashcardsPage(topic: _topics[index]),
+                        ),
+                      );
+                    },
+                    onLongPress: () => _deleteTopic(_topics[index]),
+                    child: Card(
+                      color: Color(0xFF4A0E5C),
+                      child: Center(
+                        child: Text(
+                          _topics[index],
+                          style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
             ),
           ],
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        backgroundColor: const Color(0xFF4A0E5C),
-        shape: const CircleBorder(),
-        onPressed: _addFlashcard,
-        child: const Icon(Icons.add, size: 30, color: Colors.white),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-    );
-  }
-}
-
-class FlashcardWidget extends StatefulWidget {
-  final String question;
-  final String answer;
-
-  const FlashcardWidget({required this.question, required this.answer, Key? key}) : super(key: key);
-
-  @override
-  _FlashcardWidgetState createState() => _FlashcardWidgetState();
-}
-
-class _FlashcardWidgetState extends State<FlashcardWidget> {
-  bool isFlipped = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          isFlipped = !isFlipped;
-        });
-      },
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 300),
-        transitionBuilder: (Widget child, Animation<double> animation) {
-          return RotationTransition(turns: animation, child: child);
+        backgroundColor: Color(0xFF4A0E5C),
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => AddFlashcardPage()),
+          );
         },
-        child: Container(
-          key: ValueKey<bool>(isFlipped),
-          alignment: Alignment.center,
-          margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
-          decoration: BoxDecoration(
-            color: Colors.purple[200],
-            borderRadius: BorderRadius.circular(15),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 5,
-                spreadRadius: 2,
-              ),
-            ],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Text(
-              isFlipped ? widget.answer : widget.question,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ),
+        child: Icon(Icons.add, color: Colors.white),
       ),
     );
   }
-}
-
-class CurvedBottomClipper extends CustomClipper<Path> {
-  @override
-  Path getClip(Size size) {
-    Path path = Path();
-    path.lineTo(0, size.height - 50);
-    path.quadraticBezierTo(size.width / 2, size.height, size.width, size.height - 50);
-    path.lineTo(size.width, 0);
-    path.close();
-    return path;
-  }
-
-  @override
-  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
 }

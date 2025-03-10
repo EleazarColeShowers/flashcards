@@ -17,6 +17,7 @@ class _SignUpPageState extends State<SignUpPage> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  bool _obscurePassword = true;
 
 void _signUp() async {
   String username = _usernameController.text.trim();
@@ -49,7 +50,7 @@ void _signUp() async {
     // Navigate to Home Page
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => const HomePage()),
+        MaterialPageRoute(builder: (context) => const HomePage(justLoggedIn: true)),
     );
   } catch (e) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -62,6 +63,7 @@ void _signUp() async {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Color(0xFFFFF5E1), 
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
@@ -97,15 +99,24 @@ void _signUp() async {
               const SizedBox(height: 16),
 
               TextField(
-                controller: _passwordController,
-                obscureText: true,
-                decoration: InputDecoration(
-                  labelText: "Password",
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
+                  controller: _passwordController,
+                  obscureText: _obscurePassword,
+                  decoration: InputDecoration(
+                    labelText: "Password",
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                        color: Colors.grey,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _obscurePassword = !_obscurePassword;
+                        });
+                      },
+                    ),
                   ),
                 ),
-              ),
               const SizedBox(height: 24),
 
               SizedBox(
